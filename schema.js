@@ -15,7 +15,8 @@ const {
    GraphQLString,
    GraphQLBoolean,
    GraphQLList,
-   GraphQLSchema
+   GraphQLSchema,
+   GraphQLNonNull
 } = graphql;
 const PersonType = new GraphQLObjectType({
    name: 'Person',
@@ -120,6 +121,56 @@ const RootQuery = new GraphQLObjectType({
       }
    }
 })
+
+const Mutation = new GraphQLObjectType({
+   name: 'Mutation',
+   fields: {
+      addPerson: {
+         type: PersonType,
+         args: {
+            firstname: { type: new GraphQLNonNull(GraphQLString) },
+            lastname: { type: new GraphQLNonNull(GraphQLString) },
+
+         },
+         resolve(parent,args) {
+            const query = `INSERT INTO public.people(
+               firstname, lastname)
+               VALUES ('${args.firstname}','${args.lastname}') RETURNING *;`;
+               return db.conn.one(query)
+                .then(data => {
+                    return data;
+                })
+                .catch(err => {
+                    return 'The error is', err;
+                });
+         }
+      },
+      addEmails: {
+         type: EmailType,
+         args: {
+            email: {type: new GraphQLNonNull(GraphQLString)},
+            person: {type: new GraphQLNonNull(GraphQLID)},
+            // person: {type: new GraphQLNonNull(GraphQLString)},
+         },
+         resolve(parent, args) {
+            // const query = `INSERT INTO public.emails(
+            //    email, person )
+            //    VALUES ('${args.email}',(select id from public.people where firstname= '${args.person}')) RETURNING *;`;
+            const query = `INSERT INTO public.emails(
+                  email, person )
+                  VALUES ('${args.email}',${args.person}) RETURNING *;`;
+               return db.conn.one(query)
+                .then(data => {
+                   return data;
+                })
+                .catch(err => {
+                   return 'The error is', err;
+                });
+         }
+      }
+   }
+})
 module.exports = new GraphQLSchema({
-   query: RootQuery
+   query: RootQuery,
+   mutation:Mutation
 })
