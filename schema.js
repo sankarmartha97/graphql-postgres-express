@@ -42,7 +42,7 @@ const PersonType = new GraphQLObjectType({
 })
 const EmailType = new GraphQLObjectType({
    name: 'Email',
-   fields: {
+   fields: () => ({
       id: { type: GraphQLID },
       email: { type: GraphQLString },
       primary: { type: GraphQLBoolean },
@@ -60,7 +60,7 @@ const EmailType = new GraphQLObjectType({
                 });
           }
       }
-   }
+   })
 })
 const RootQuery = new GraphQLObjectType({
    name: 'RootQueryType',
@@ -149,22 +149,42 @@ const Mutation = new GraphQLObjectType({
          type: EmailType,
          args: {
             email: {type: new GraphQLNonNull(GraphQLString)},
-            person: {type: new GraphQLNonNull(GraphQLID)},
-            // person: {type: new GraphQLNonNull(GraphQLString)},
+            // person: {type: new GraphQLNonNull(GraphQLID)},
+            person: {type: new GraphQLNonNull(GraphQLString)},
          },
          resolve(parent, args) {
-            // const query = `INSERT INTO public.emails(
-            //    email, person )
-            //    VALUES ('${args.email}',(select id from public.people where firstname= '${args.person}')) RETURNING *;`;
             const query = `INSERT INTO public.emails(
-                  email, person )
-                  VALUES ('${args.email}',${args.person}) RETURNING *;`;
+               email, person )
+               VALUES ('${args.email}',(select id from public.people where firstname= '${args.person}')) RETURNING *;`;
+            // const query = `INSERT INTO public.emails(
+            //       email, person )
+            //       VALUES ('${args.email}',${args.person}) RETURNING *;`;
                return db.conn.one(query)
                 .then(data => {
                    return data;
                 })
                 .catch(err => {
                    return 'The error is', err;
+                });
+         }
+      },
+      updatePerson: {
+         type: PersonType,
+         args: {
+            id:{type: new GraphQLNonNull(GraphQLID)},
+            firstname: { type: GraphQLString },
+            lastname: { type: GraphQLString },
+         },
+         resolve(parent,args) {
+            const query = `UPDATE public.people
+            SET firstname='${args.firstname}', lastname='${args.lastname}'
+            WHERE id=${args.id} RETURNING *;`;
+               return db.conn.one(query)
+                .then(data => {
+                    return data;
+                })
+                .catch(err => {
+                    return 'The error is', err;
                 });
          }
       }
